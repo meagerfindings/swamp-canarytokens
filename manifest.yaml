@@ -1,0 +1,25 @@
+manifestVersion: 1
+name: "@mgreten/canarytokens"
+version: "2026.07.28.1"
+description: >
+  Deterministic, read-only normalization and bounded deduplication of
+  caller-supplied Canarytoken incident observations. Does not contact a
+  Canarytokens server, create tokens, inspect vaults/files, or send alerts.
+repository: https://github.com/meagerfindings/swamp-canarytokens
+
+paths:
+  base: manifest
+
+additionalFiles:
+  - README.md
+  - LICENSE.md
+  - canarytokens_test.ts
+
+models:
+  - model.ts
+
+platforms:
+  - linux-x86_64
+  - linux-aarch64
+  - darwin-x86_64
+  - darwin-aarch64

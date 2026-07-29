@@ -1,10 +1,10 @@
 manifestVersion: 1
 name: "@mgreten/canarytokens"
-version: "2026.07.28.1"
+version: "2026.07.29.1"
 description: >
-  Read-only normalization with deterministic keying and bounded deduplication of
-  caller-supplied Canarytoken incident observations. Does not contact a
-  Canarytokens server, create tokens, inspect vaults/files, or send alerts.
+  Normalize caller-supplied Canarytoken incidents with deterministic bounded
+  deduplication, and optionally create preview-confirmed web tokens against one
+  pinned self-hosted server through a separate creator model.
 repository: https://github.com/meagerfindings/swamp-canarytokens
 paths:
   base: manifest
@@ -12,8 +12,10 @@ additionalFiles:
   - README.md
   - LICENSE.md
   - model_test.ts
+  - creator_test.ts
 models:
   - model.ts
+  - creator.ts
 platforms:
   - linux-x86_64
   - linux-aarch64

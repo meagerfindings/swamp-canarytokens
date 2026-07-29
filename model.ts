@@ -126,7 +126,13 @@ const AcknowledgeArgs = z.object({
  */
 export const model = {
   type: "@mgreten/canarytokens",
-  version: "2026.07.28.1",
+  version: "2026.07.29.1",
+  upgrades: [{
+    toVersion: "2026.07.29.1",
+    description:
+      "Publish the separate creator model; no incident-model argument or stored-data changes",
+    upgradeAttributes: (old: Record<string, unknown>) => old,
+  }],
   globalArguments: z.object({}).strict(),
   resources: {
     canaryIncidentReport: {

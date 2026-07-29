@@ -1,8 +1,11 @@
-# Canarytokens incident normalizer
+# Canarytokens incident normalizer and web-token creator
 
-`@mgreten/canarytokens` is a read-only Swamp model with deterministic keying and state-transition decisions that turns caller-supplied Canarytoken observations into a persisted, bounded incident report. Processing and acknowledgement timestamps come from the execution clock. It is designed as the safe analysis layer between a private alert collector and an operator-facing response workflow.
+This package provides two deliberately separate Swamp model types:
 
-The model does **not** create, deploy, read, modify, or delete Canarytokens. It makes no network request, does not inspect host files or Swamp vaults, does not access credentials, and does not send Discord, email, ntfy, or Home Assistant notifications. A separate explicitly authorized private collector should perform any provider/webhook integration and pass only normalized, redacted observations to `ingest`.
+- `@mgreten/canarytokens` is the original provider-read-only incident normalizer. It has deterministic keying and state-transition decisions that turn caller-supplied observations into a persisted, bounded incident report. It still makes no network requests and cannot create or modify provider tokens.
+- `@mgreten/canarytokens/creator` is an explicitly mutating sibling that creates one web token at a time against one operator-configured self-hosted Canarytokens endpoint. It requires a preview-bound confirmation, refuses redirects, blocks ambiguous retries, and stores generated token material through Swamp's sensitive-resource vault boundary.
+
+Neither model sends Discord, email, ntfy, or Home Assistant notifications. A separate explicitly authorized private collector should perform webhook ingestion and pass only normalized, redacted observations to the incident model's `ingest` method.
 
 ## Methods
 
@@ -50,4 +53,29 @@ A hit is a tripwire, not proof of compromise. Preserve the provider-side timesta
 - SHA-256 keys are pseudonyms, not encryption. Predictable provider IDs may be guessable, so never supply a sensitive ID or treat its hash as secret protection.
 - With `eventId`, that provider ID alone defines incident identity. Without it, identity excludes country, ASN, and severity. Caller-controlled timestamps determine deduplication, reopening, and recency retention; the model does not reject future clock skew.
 - Recency retention can evict unacknowledged incidents. Eviction also removes retained event-ID replay history, so a later replay can be accepted again.
-- This is the first registry release. Reports produced by pre-release Git revisions used a different schema and must be reset rather than reused.
+- Reports produced by pre-release Git revisions used a different schema and must be reset rather than reused.
+
+## Web-token creator
+
+The creator intentionally supports only `web` tokens. Configure an exact HTTPS `/generate` endpoint and one HTTPS alert webhook globally. The endpoint cannot be overridden per call. Treat the webhook as sensitive and wire it from a Swamp vault expression.
+
+```text
+swamp model create @mgreten/canarytokens/creator canarytoken-creator \
+  --global-arg 'apiEndpoint=https://canary.example.internal/<api-prefix>/generate' \
+  --global-arg 'webhookUrl=${{ vault.get(canarytokens, alert-webhook-url) }}'
+
+swamp model method run canarytoken-creator preview \
+  --input '{"requestId":"operator-20260729-001","label":"decoy-admin-document"}'
+
+# Read the preview artifact, inspect it, then pass its exact confirmation:
+swamp model method run canarytoken-creator create \
+  --input '{"requestId":"operator-20260729-001","label":"decoy-admin-document","confirmation":"create-web:<sha256>"}'
+
+swamp model method run canarytoken-creator inventory
+```
+
+The `requestId` is a non-secret operator-supplied idempotency key. Once its pending receipt is durable, Swamp's per-model execution lock prevents concurrent and sequential calls for the same request. A completed request is safe to repeat and does not contact the provider again. A pending request represents an ambiguous crash/network window and is deliberately blocked from retry: reconcile it on the Canarytokens server and use a new request ID rather than risk silently creating duplicates. The provider's documented HTTP 400 validation response is recorded as failed and also requires a new request ID; every other unexpected status remains pending. This is not provider-backed exactly-once delivery: a cached remote datastore that loses its final state sync can lose the receipt after the provider has acted. Use a directly durable datastore when that failure boundary matters.
+
+Generated token IDs, trigger URLs, hostnames, and management credentials are declared sensitive. Swamp moves them to its configured vault and persists only vault references. The ordinary inventory contains only the request ID, non-secret label, status, timestamps, and confirmation fingerprint. A separate durable safe receipt preserves idempotency after an item leaves the bounded 100-item inventory. Do not put locations, credentials, URLs, or other secrets in `requestId` or `label`.
+
+The open-source Canarytokens `/generate` route is an implementation contract, not a documented stable public API. Pin and test the exact endpoint for your deployment before use. In the deployment used to validate this model, successful responses returned an empty `webhook_url` even though the requested webhook was retained, so the creator validates the required generated fields rather than trusting that response field as an echo. The creator accepts operator-configured private/tailnet endpoints because self-hosting is its purpose; HTTPS and redirect refusal reduce destination drift, but DNS and certificate trust still belong to the host runtime. The model does not authorize Tailscale Funnel or make token callbacks publicly reachable. Only place generated tokens where both the trigger and alert callback can reach the configured infrastructure.

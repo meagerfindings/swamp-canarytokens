@@ -142,6 +142,19 @@ Deno.test("public argument schemas reject unknown and malformed fields", () => {
   );
 });
 
+Deno.test("published incident model has a no-op upgrade to the package version", () => {
+  assert(model.version === "2026.07.29.1", "model version must match package");
+  const upgrade = model.upgrades.find((candidate) =>
+    candidate.toVersion === model.version
+  );
+  assert(upgrade, "current model version must have an upgrade entry");
+  const attributes = { retained: "unchanged" };
+  assert(
+    upgrade!.upgradeAttributes(attributes) === attributes,
+    "creator release must not mutate incident-model attributes",
+  );
+});
+
 Deno.test("all 100 schema-accepted events are processed", async () => {
   const h = harness();
   const events = Array.from(

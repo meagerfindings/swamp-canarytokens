@@ -1,10 +1,11 @@
 manifestVersion: 1
 name: "@mgreten/canarytokens"
-version: "2026.07.29.1"
+version: "2026.10.14.1"
 description: >
   Normalize caller-supplied Canarytoken incidents with deterministic bounded
   deduplication, and optionally create preview-confirmed web tokens against one
   pinned self-hosted server through a separate creator model.
+license: MIT
 repository: https://github.com/meagerfindings/swamp-canarytokens
 paths:
   base: manifest
